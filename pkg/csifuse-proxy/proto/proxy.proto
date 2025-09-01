@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+
+service Proxy {
+  rpc CsiMountInHost (MountRequest) returns (MountReply) {}
+}
+
+message MountRequest {
+  string mntCmd = 1;
+  string mntArgs = 2;
+}
+
+message MountReply {
+  string output = 1;
+}

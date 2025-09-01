@@ -1,0 +1,18 @@
+[Unit]
+Description=csifuse proxy service
+
+[Service]
+ExecStart=/usr/bin/csifuse-proxy --v=5 --csifuse-proxy-path=/var/lib/kubelet/plugins/gcs.csi.shein.dev/csifuse-proxy.sock
+Delegate=yes
+KillMode=process
+Restart=always
+OOMScoreAdjust=-999
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNPROC=infinity
+LimitCORE=infinity
+LimitNOFILE=infinity
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
