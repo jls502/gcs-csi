@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
-	gcsv1beta1 "github.com/ofek/csi-gcs/pkg/client/clientset/clientset/typed/published-volume/v1beta1"
+	gcsv1beta1 "github.com/shein/gcs-csi/pkg/client/clientset/clientset/typed/published-volume/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

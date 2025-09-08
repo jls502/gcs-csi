@@ -1,0 +1,23 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-gcs-dy-key
+provisioner: gcs.csi.shein.dev
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+mountOptions:
+  - -o=allow_other
+  - --gid=0
+  - --dir-mode=0775
+  - --file-mode=0775
+  - --implicit-dirs
+parameters:
+  csi.storage.k8s.io/node-publish-secret-name: csi-gcs-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: default
+  csi.storage.k8s.io/provisioner-secret-name: csi-gcs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-gcs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  gcs.csi.shein.dev/project-id: abc-poc-test 
+  gcs.csi.shein.dev/location: eu

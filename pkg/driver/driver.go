@@ -9,12 +9,15 @@ import (
 	"google.golang.org/grpc"
 	"k8s.io/klog"
 
-	"github.com/ofek/csi-gcs/pkg/util"
+	"github.com/shein/gcs-csi/pkg/util"
 
 	"k8s.io/utils/mount"
 )
 
 type GCSDriver struct {
+	csi.UnimplementedIdentityServer
+        csi.UnimplementedControllerServer
+        csi.UnimplementedNodeServer
 	name               string
 	nodeName           string
 	endpoint           string

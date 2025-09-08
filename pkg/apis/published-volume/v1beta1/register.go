@@ -8,7 +8,7 @@ import (
 
 // Define your schema name and the version
 var SchemeGroupVersion = schema.GroupVersion{
-	Group:   "gcs.csi.ofek.dev",
+	Group:   "gcs.csi.shein.dev",
 	Version: "v1beta1",
 }
 

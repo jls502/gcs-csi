@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcscsi-test-dy-key
+spec:
+  selector:  # 选择器定义
+    matchLabels:
+      app: gcscsi-test-dy-key
+  template:
+    metadata:
+      labels:  # Pod 标签
+        app: gcscsi-test-dy-key
+    spec:
+      containers:
+      - name: writer
+        image: busybox
+        command:
+        - sleep
+        - infinity
+        volumeMounts:
+        - name: csi-gcs-pvc-dy-key
+          mountPath: /data
+      volumes:
+      - name: csi-gcs-pvc-dy-key
+        persistentVolumeClaim:
+          claimName: csi-gcs-pvc-dy-key

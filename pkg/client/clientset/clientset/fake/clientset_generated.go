@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/ofek/csi-gcs/pkg/client/clientset/clientset"
-	gcsv1beta1 "github.com/ofek/csi-gcs/pkg/client/clientset/clientset/typed/published-volume/v1beta1"
-	fakegcsv1beta1 "github.com/ofek/csi-gcs/pkg/client/clientset/clientset/typed/published-volume/v1beta1/fake"
+	clientset "github.com/shein/gcs-csi/pkg/client/clientset/clientset"
+	gcsv1beta1 "github.com/shein/gcs-csi/pkg/client/clientset/clientset/typed/published-volume/v1beta1"
+	fakegcsv1beta1 "github.com/shein/gcs-csi/pkg/client/clientset/clientset/typed/published-volume/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

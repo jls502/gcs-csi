@@ -21,8 +21,8 @@ package v1beta1
 import (
 	"net/http"
 
-	v1beta1 "github.com/ofek/csi-gcs/pkg/apis/published-volume/v1beta1"
-	"github.com/ofek/csi-gcs/pkg/client/clientset/clientset/scheme"
+	v1beta1 "github.com/shein/gcs-csi/pkg/apis/published-volume/v1beta1"
+	"github.com/shein/gcs-csi/pkg/client/clientset/clientset/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

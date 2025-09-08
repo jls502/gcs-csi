@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/ofek/csi-gcs/pkg/flags"
+	. "github.com/shein/gcs-csi/pkg/flags"
 )
 
 var _ = Describe("Flags", func() {
@@ -39,9 +39,9 @@ var _ = Describe("Flags", func() {
 						"location": "US",
 					},
 					map[string]string{
-						"gcs.csi.ofek.dev/bucket":     "test2",
-						"gcs.csi.ofek.dev/project-id": "csi-gcs",
-						"gcs.csi.ofek.dev/foo":        "bar",
+						"gcs.csi.shein.dev/bucket":     "test2",
+						"gcs.csi.shein.dev/project-id": "csi-gcs",
+						"gcs.csi.shein.dev/foo":        "bar",
 					},
 				),
 			).To(Equal(map[string]string{

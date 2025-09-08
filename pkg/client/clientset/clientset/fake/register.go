@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	gcsv1beta1 "github.com/ofek/csi-gcs/pkg/apis/published-volume/v1beta1"
+	gcsv1beta1 "github.com/shein/gcs-csi/pkg/apis/published-volume/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

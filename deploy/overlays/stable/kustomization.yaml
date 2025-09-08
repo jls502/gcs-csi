@@ -3,5 +3,5 @@ kind: Kustomization
 bases:
 - ../../base
 images:
-- name: docker.io/ofekmeister/csi-gcs
-  newTag: v0.9.0
+- name: gcscsi
+  newTag: v1.1

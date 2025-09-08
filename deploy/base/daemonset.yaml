@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: csi-gcs
+  name: gcs-csi
 spec:
   selector:
     matchLabels:
-      app: csi-gcs
+      app: gcs-csi
   template:
     metadata:
       labels:
-        app: csi-gcs
+        app: gcs-csi
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -17,11 +17,36 @@ spec:
       tolerations:
       - operator: "Exists"
       hostNetwork: true
-      serviceAccount: csi-gcs
+      hostPID: true
+      initContainers:
+        - name: install-csifuse-proxy
+          #image: gcs:proxy
+          image: gcscsi:v1.1
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/csifuse-proxy/install-csiproxy.sh"
+          securityContext:
+            privileged: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+          - name: workload-identity-credential-configuration
+            mountPath: "/etc/workload-identity"
+            readOnly: true
+          - name: host-usr
+            mountPath: /host/usr
+          - name: host-etc
+            mountPath: /host/etc
+          - name: lib-modules
+            mountPath: /lib/modules
+            readOnly: true
+          - name: proc
+            mountPath: /proc
       containers:
       - name: csi-node-driver-registrar
-        image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
-        imagePullPolicy: Always
+        image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.9.0
+        imagePullPolicy: IfNotPresent
         args:
         - "--v=5"
         - "--csi-address=$(ADDRESS)"
@@ -30,7 +55,7 @@ spec:
         - name: ADDRESS
           value: /csi/csi.sock
         - name: DRIVER_REG_SOCK_PATH
-          value: /var/lib/kubelet/plugins/gcs.csi.ofek.dev/csi.sock
+          value: /var/lib/kubelet/plugins/gcs.csi.shein.dev/csi.sock
         - name: KUBE_NODE_NAME
           valueFrom:
             fieldRef:
@@ -49,70 +74,61 @@ spec:
             cpu: 10m
             memory: 20Mi
       - name: csi-provisioner
-        image: quay.io/k8scsi/csi-provisioner:v1.6.0
+        image: aurora6/csi-provisioner:v2.2.2
         args:
           - "--csi-address=$(ADDRESS)"
           - "--extra-create-metadata"
-          - "--enable-leader-election"
-          - "--leader-election-namespace=$(NAMESPACE)"
-        env:
-          - name: ADDRESS
-            value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          - name: NAMESPACE
-            value: kube-system
-        imagePullPolicy: "IfNotPresent"
-        volumeMounts:
-          - name: socket-dir
-            mountPath: /var/lib/csi/sockets/pluginproxy/
-      - name: csi-resizer
-        image: quay.io/k8scsi/csi-resizer:v0.2.0
-        args:
-          - "--v=5"
-          - "--csi-address=$(ADDRESS)"
           - "--leader-election"
           - "--leader-election-namespace=$(NAMESPACE)"
         env:
-          - name: ADDRESS
-            value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          - name: NAMESPACE
-            value: kube-system
+        - name: ADDRESS
+          value: /var/lib/csi/sockets/pluginproxy/csi.sock
+        - name: NAMESPACE
+          value: gcs-csi-test
         imagePullPolicy: "IfNotPresent"
         volumeMounts:
-          - name: socket-dir
-            mountPath: /var/lib/csi/sockets/pluginproxy/
-        resources:
-          limits:
-            cpu: 1
-            memory: 1Gi
-          requests:
-            cpu: 10m
-            memory: 20Mi
-      - name: csi-gcs
+        - name: socket-dir
+          mountPath: /var/lib/csi/sockets/pluginproxy/
+      - name: gcs-csi
         securityContext:
           privileged: true
           capabilities:
             add: ["SYS_ADMIN"]
           allowPrivilegeEscalation: true
-        image: docker.io/ofekmeister/csi-gcs:latest
-        imagePullPolicy: Always
+        image: gcscsi:v1.1
+        imagePullPolicy: IfNotPresent 
         args:
+        - "/usr/local/bin/driver"
         - "--node-name=$(KUBE_NODE_NAME)"
-        # https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
         - "--v=5"
-        - "--delete-orphaned-pods=true"
+        #- "--delete-orphaned-pods=true"
         env:
         - name: KUBE_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
         volumeMounts:
-        - name: fuse-device
-          mountPath: /dev/fuse
+        - name: workload-identity-credential-configuration
+          mountPath: "/etc/workload-identity"
+          readOnly: true
+        - name: token
+          mountPath: "/var/run/service-account"
         - name: mountpoint-dir
           mountPath: /var/lib/kubelet/pods
-          mountPropagation: Bidirectional
+          mountPropagation: "Bidirectional"
         - name: socket-dir
           mountPath: /csi
+        - name: host-var
+          mountPath: /host/var/run/service-account
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: proc
+          mountPath: /proc
+        - name: plugins-mount-dir
+          mountPath: /var/lib/kubelet/plugins
+          mountPropagation: "Bidirectional"
+
         resources:
           limits:
             cpu: 1
@@ -120,20 +136,48 @@ spec:
           requests:
             cpu: 10m
             memory: 80Mi
+
+      serviceAccountName: test-sa
       volumes:
-      - name: fuse-device
-        hostPath:
-          path: /dev/fuse
-      # https://kubernetes-csi.github.io/docs/deploying.html#driver-volume-mounts
+      - name: token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: https://iam.googleapis.com/projects/362600025029/locations/global/workloadIdentityPools/gcscsi-test/providers/gcscsi-test
+              expirationSeconds: 3600
+              path: token
+      - name: workload-identity-credential-configuration
+        configMap:
+          name: gcp-cred
       - name: socket-dir
         hostPath:
-          path: /var/lib/kubelet/plugins/gcs.csi.ofek.dev
+          path: /var/lib/kubelet/plugins/gcs.csi.shein.dev
           type: DirectoryOrCreate
-      - name: mountpoint-dir
-        hostPath:
-          path: /var/lib/kubelet/pods
-          type: Directory
       - name: registration-dir
         hostPath:
           path: /var/lib/kubelet/plugins_registry
           type: Directory
+      - name: mountpoint-dir
+        hostPath:
+          path: /var/lib/kubelet/pods
+          type: Directory
+      - name: plugins-mount-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins
+          type: Directory
+      - name: host-var
+        hostPath:
+          path: /var/run/service-account
+      - name: host-etc
+        hostPath:
+          path: /etc
+      - name: host-usr
+        hostPath:
+          path: /usr
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: proc
+        hostPath:
+          path: /proc
+

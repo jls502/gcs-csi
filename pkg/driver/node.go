@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
+	"time"
 	"strings"
 
-	"cloud.google.com/go/storage"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"github.com/ofek/csi-gcs/pkg/flags"
-	"github.com/ofek/csi-gcs/pkg/util"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
+	"github.com/shein/gcs-csi/pkg/flags"
+	"github.com/shein/gcs-csi/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
+	"google.golang.org/grpc"
+        //pb "github.com/ofek/csi-gcs/pkg/pb"
+	pb "github.com/shein/gcs-csi/pkg/csifuse-proxy/pb"
 	"k8s.io/utils/mount"
 )
 
@@ -42,62 +42,31 @@ func (driver *GCSDriver) NodePublishVolume(ctx context.Context, req *csi.NodePub
 	// Default Options
 	var options = map[string]string{
 		"bucket":   req.GetVolumeId(),
-		"gid":      strconv.FormatInt(DefaultGid, 10),
-		"dirMode":  "0" + strconv.FormatInt(DefaultDirMode, 8),
-		"fileMode": "0" + strconv.FormatInt(DefaultFileMode, 8),
 	}
-
-	// Merge Secret Options
-	options = flags.MergeSecret(options, req.Secrets)
-
-	// Merge MountFlag Options
-	options = flags.MergeMountOptions(options, req.GetVolumeCapability().GetMount().GetMountFlags())
 
 	// Merge Volume Context
 	if req.VolumeContext != nil {
 		options = flags.MergeFlags(options, req.VolumeContext)
 	}
 
-	var clientOpt option.ClientOption
+	//var clientOpt option.ClientOption
 	keyFile := ""
-	if len(req.Secrets) == 0 {
-		// Find default credentials
-		creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
-		if err != nil {
-			return nil, err
-		}
-		clientOpt = option.WithCredentials(creds)
-	} else {
+	if len(req.Secrets) != 0 {
 		// Retrieve Secret Key
 		var err error
-		keyFile, err = util.GetKey(req.Secrets, KeyStoragePath)
+		//keyFile, err = util.GetKey(req.Secrets, KeyStoragePath, req.VolumeContext["csi.storage.k8s.io/pod.uid"])
+		keyFile, err = util.GetKey(req.Secrets, KeyStoragePath, req.GetVolumeId())
 		if err != nil {
 			return nil, err
 		}
-		clientOpt = option.WithCredentialsFile(keyFile)
-	}
-
-	// Creates a client.
-	client, err := storage.NewClient(ctx, clientOpt)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to create client: %v", err)
-	}
-
-	// Creates a Bucket instance.
-	bucket := client.Bucket(options[flags.FLAG_BUCKET])
-
-	bucketExists, err := util.BucketExists(ctx, bucket)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to check if bucket exists: %v", err)
-	}
-	if !bucketExists {
-		return nil, status.Errorf(codes.NotFound, "Bucket %s does not exist", options[flags.FLAG_BUCKET])
 	}
 
 	notMnt, err := driver.mounter.IsLikelyNotMountPoint(req.TargetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			klog.V(4).Infof("mkdir targetpath:%v",req.TargetPath)
 			if err := os.MkdirAll(req.TargetPath, 0750); err != nil {
+				klog.V(4).Infof("mkdir targetpath:%v err:%v",req.TargetPath,err)
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			notMnt = true
@@ -107,28 +76,99 @@ func (driver *GCSDriver) NodePublishVolume(ctx context.Context, req *csi.NodePub
 	}
 
 	if !notMnt {
+		klog.V(4).Infof("mkdir targetpath notMnt")
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	mountOptions := []string{"allow_other"}
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 	if keyFile != "" {
-		mountOptions = append(mountOptions, fmt.Sprintf("key_file=%s", keyFile))
+		//hostKeyFile := "/var/lib/kubelet/plugins/gcs.csi.shein.dev/keys/" + req.VolumeContext["csi.storage.k8s.io/pod.uid"]
+		hostKeyFile := "/var/lib/kubelet/plugins/gcs.csi.shein.dev/keys/" + req.GetVolumeId()
+		mountOptions = append(mountOptions, fmt.Sprintf("--key-file=%s", hostKeyFile))
 	}
-	mountOptions = append(mountOptions, flags.ExtraFlags(options)...)
+	//mountOptions = append(mountOptions, flags.ExtraFlags(options)...)
 	if req.GetReadonly() {
-		mountOptions = append(mountOptions, "ro")
+		mountOptions = append(mountOptions, "-o=ro")
 	}
 
-	err = driver.mounter.Mount(options[flags.FLAG_BUCKET], req.TargetPath, "gcsfuse", mountOptions)
+	//mountArgs := []string{}
+	//mountArgs = append(mountArgs, mountOptions...)
+	//mountArgs = append(mountArgs, options[flags.FLAG_BUCKET], req.TargetPath)
+	//klog.V(4).Infof("mountArgs : %v", mountArgs)
+	mountOptions = append(mountOptions,options[flags.FLAG_BUCKET], req.TargetPath)
+	//mntArgs := []string{"--mount=/proc/1/ns/mnt","--pid=/proc/1/ns/pid","gcsfuse"}
+	//mntArgs = append(mntArgs,mountOptions...)
+
+	klog.V(4).Infof("mntOptin: %v",mountOptions)
+
+	/*
+	mkArgs := []string{"--mount=/proc/1/ns/mnt","mkdir","-p",req.TargetPath}
+	cmd = exec.Command("nsenter",mkArgs...)
+	_, err = cmd.CombinedOutput()
+        if err != nil {
+                klog.V(4).Infof("mkdir targetPath error:%v",err)
+                return nil, status.Error(codes.Internal, err.Error())
+        }*/
+
+	mntOptstr := strings.Join(mountOptions," ")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	klog.V(2).Infof("start connecting to csifuse proxy, mntCmd: gcsfuse  args: %s", mntOptstr)
+	conn, err := grpc.DialContext(ctx, "unix:///csi/csifuse-proxy.sock", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		if os.IsPermission(err) {
-			return nil, status.Error(codes.PermissionDenied, err.Error())
-		}
-		if strings.Contains(err.Error(), "invalid argument") {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("failed to connect to csifuse proxy: %v", err)
+		return nil, status.Errorf(codes.Internal,"connect csifuse error:%v",err)
 	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			klog.Errorf("failed to close connection to csifuse proxy: %v", err)
+		}
+	}()
+
+	mountClient := pb.NewProxyClient(conn)
+	klog.V(2).Infof("begin to mount with csifuse proxy, gcsfuse %s", mntOptstr)
+	resp, err := mountClient.CsiMountInHost(context.TODO(), &pb.MountRequest{MntCmd: "gcsfuse", MntArgs: mntOptstr})
+	if err != nil {
+		klog.Error("GRPC call csiproxy returned with an error:", err)
+		return nil, status.Errorf(codes.Internal, "csiproxy mount error: %v, output: %s", err, string(resp.GetOutput()))
+	}
+
+	/*
+	serviceName := fmt.Sprintf("gcsfuse-%s.service", req.GetVolumeId())
+	serviceContent := fmt.Sprintf(`
+[Unit]
+Description=GCSFuse Mount for %s
+After=network.target
+
+[Service]
+Type=forking
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/etc/workload-identity/cred.json
+ExecStart=/usr/bin/gcsfuse %s
+Restart=on-failure
+RestartSec=5
+OOMScoreAdjust=-999
+
+[Install]
+WantedBy=multi-user.target
+`, req.GetVolumeId(),mntOptstr)
+
+	servicePath := filepath.Join("/etc/systemd/system", serviceName)
+	cmd := exec.Command("nsenter", "--mount=/proc/1/ns/mnt", "sh", "-c", fmt.Sprintf("echo '%s' > %s", serviceContent, servicePath))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to write service file: %v, output: %s", err, output)
+	}
+
+	cmd = exec.Command("nsenter", "--mount=/proc/1/ns/mnt", "systemctl", "daemon-reload")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return nil, status.Errorf(codes.Internal, "systemctl daemon-reload failed: %v, output: %s", err, output)
+	}
+
+	cmd = exec.Command("nsenter", "--mount=/proc/1/ns/mnt", "systemctl", "start", serviceName)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return nil, status.Errorf(codes.Internal, "systemctl start failed: %v, output: %s", err, output)
+	}*/
+
 
 	if driver.deleteOrphanedPods {
 		err = util.RegisterMount(
@@ -180,6 +220,14 @@ func (driver *GCSDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeU
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	/*
+	parts := strings.Split(req.TargetPath,"/")
+	keyFile := KeyStoragePath+"/" + parts[5]
+	err = os.Remove(keyFile)
+	if err != nil {
+		klog.V(4).Infof("failed to remove keyfile: %s, error:%v",keyFile,err)
+	}*/
 
 	if driver.deleteOrphanedPods {
 		err = util.UnregisterMount(ctx, req.VolumeId, req.TargetPath, driver.nodeName)

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcscsi-test-key
+spec:
+  template:
+    spec:
+      containers:
+      - name: writer
+        image: busybox
+        command:
+        - sleep
+        - infinity
+        volumeMounts:
+        - name: csi-gcs-pvc-key
+          mountPath: /data
+      volumes:
+      - name: csi-gcs-pvc-key
+        persistentVolumeClaim:
+          claimName: csi-gcs-pvc-key

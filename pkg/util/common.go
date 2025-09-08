@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/ofek/csi-gcs/pkg/apis/published-volume/v1beta1"
-	gcs "github.com/ofek/csi-gcs/pkg/client/clientset/clientset"
+	"github.com/shein/gcs-csi/pkg/apis/published-volume/v1beta1"
+	gcs "github.com/shein/gcs-csi/pkg/client/clientset/clientset"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,7 +88,8 @@ func CreateDir(d string) error {
 	return nil
 }
 
-func GetKey(secrets map[string]string, keyStoragePath string) (string, error) {
+func GetKey(secrets map[string]string, keyStoragePath string, keyFileName string) (string, error) {
+	keyFile := keyStoragePath + "/" + keyFileName
 	if _, err := os.Stat(keyStoragePath); os.IsNotExist(err) {
 		os.Mkdir(keyStoragePath, 0700)
 	}
@@ -98,11 +99,14 @@ func GetKey(secrets map[string]string, keyStoragePath string) (string, error) {
 		return "", status.Errorf(codes.Internal, "Secret '%s' is unavailable", "key")
 	}
 
-	klog.V(5).Info("Saving key contents to a temporary location")
-	keyFile, err := CreateFile(keyStoragePath, keyContents)
-	if err != nil {
-		return "", status.Errorf(codes.Internal, "Unable to save secret 'key' to %s", keyStoragePath)
-	}
+	klog.V(5).Info("Saving key contents to /csi/keys/%s", keyFileName)
+
+	fileContents := []byte(keyContents)
+
+        err := os.WriteFile(keyFile, fileContents, 0644)
+        if err != nil {
+                return "", fmt.Errorf("error writing to file %s: %s", keyFile, err)
+        }
 
 	return keyFile, nil
 }
@@ -257,7 +261,7 @@ func GetRegisteredMounts(ctx context.Context, node string) (list *v1beta1.Publis
 
 	return clientset.GcsV1beta1().PublishedVolumes().List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set(map[string]string{
-			"gcs.csi.ofek.dev/node": node,
+			"gcs.csi.shein.dev/node": node,
 		}).String(),
 	})
 }
@@ -289,7 +293,7 @@ func RegisterMount(ctx context.Context, volumeID string, targetPath string, node
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				"gcs.csi.ofek.dev/node": node,
+				"gcs.csi.shein.dev/node": node,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{

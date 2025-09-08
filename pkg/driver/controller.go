@@ -7,8 +7,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"github.com/ofek/csi-gcs/pkg/flags"
-	"github.com/ofek/csi-gcs/pkg/util"
+	"github.com/shein/gcs-csi/pkg/flags"
+	"github.com/shein/gcs-csi/pkg/util"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
@@ -36,17 +36,15 @@ func (d *GCSDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeReque
 	// Default Options
 	var options = map[string]string{
 		"bucket":   util.BucketName(req.Name),
-		"location": "US",
-		"kmsKeyId": "",
 	}
 
 	// Merge Secret Options
 	options = flags.MergeSecret(options, req.Secrets)
 
 	// Merge MountFlag Options
-	for _, capability := range req.GetVolumeCapabilities() {
-		options = flags.MergeMountOptions(options, capability.GetMount().GetMountFlags())
-	}
+	//for _, capability := range req.GetVolumeCapabilities() {
+	//	options = flags.MergeMountOptions(options, capability.GetMount().GetMountFlags())
+	//}
 
 	// Merge PVC Annotation Options
 	pvcName, pvcNameSelected := req.Parameters["csi.storage.k8s.io/pvc/name"]
@@ -71,15 +69,15 @@ func (d *GCSDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeReque
 
 	var clientOpt option.ClientOption
 	if len(req.Secrets) == 0 {
-		// Find default credentials
-		creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
-		if err != nil {
-			return nil, err
-		}
-		clientOpt = option.WithCredentials(creds)
+		// workload identity credentials
+		//creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
+		//if err != nil {
+		//	return nil, err
+		//}
+		clientOpt = option.WithCredentialsFile(WIStoragePath)
 	} else {
 		// Retrieve Secret Key
-		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath)
+		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath, req.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -107,8 +105,7 @@ func (d *GCSDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeReque
 		if !projectIdExists {
 			return nil, status.Errorf(codes.InvalidArgument, "Project Id not provided, bucket can't be created: %s", options[flags.FLAG_BUCKET])
 		}
-		if err := bucket.Create(ctx, projectId, &storage.BucketAttrs{Location: options[flags.FLAG_LOCATION],
-			Encryption: &storage.BucketEncryption{DefaultKMSKeyName: options[flags.FLAG_KMS_KEY_ID]}}); err != nil {
+		if err := bucket.Create(ctx, projectId, &storage.BucketAttrs{Location: options[flags.FLAG_LOCATION]}); err != nil {
 			return nil, status.Errorf(codes.Internal, "Failed to create bucket: %v", err)
 		}
 	}
@@ -154,14 +151,14 @@ func (d *GCSDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeReque
 	var clientOpt option.ClientOption
 	if len(req.Secrets) == 0 {
 		// Find default credentials
-		creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
-		if err != nil {
-			return nil, err
-		}
-		clientOpt = option.WithCredentials(creds)
+		//creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
+		//if err != nil {
+		//	return nil, err
+		//}
+		clientOpt = option.WithCredentialsFile(WIStoragePath)
 	} else {
 		// Retrieve Secret Key
-		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath)
+		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath,req.VolumeId)
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +232,7 @@ func (d *GCSDriver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Val
 		clientOpt = option.WithCredentials(creds)
 	} else {
 		// Retrieve Secret Key
-		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath)
+		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath,req.VolumeId)
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +337,7 @@ func (d *GCSDriver) ControllerExpandVolume(ctx context.Context, req *csi.Control
 		clientOpt = option.WithCredentials(creds)
 	} else {
 		// Retrieve Secret Key
-		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath)
+		keyFile, err := util.GetKey(req.Secrets, KeyStoragePath,req.VolumeId)
 		if err != nil {
 			return nil, err
 		}

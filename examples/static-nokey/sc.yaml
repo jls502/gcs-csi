@@ -1,0 +1,8 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-gcs-test-sc-nokey
+provisioner: gcs.csi.shein.dev
+parameters:
+  # 启用附加要求
+  attachRequired: "true"

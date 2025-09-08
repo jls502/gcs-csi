@@ -1,0 +1,17 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-gcs-dy-nokey
+provisioner: gcs.csi.shein.dev
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+mountOptions:
+  - -o=allow_other
+  - --gid=0
+  - --dir-mode=0775
+  - --file-mode=0775
+  - --implicit-dirs
+parameters:
+  gcs.csi.shein.dev/project-id: abc-poc-test 
+  gcs.csi.shein.dev/location: eu

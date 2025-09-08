@@ -1,8 +1,7 @@
 apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:
-  name: gcs.csi.ofek.dev
-# https://kubernetes-csi.github.io/docs/csi-driver-object.html
+  name: gcs.csi.shein.dev
 spec:
   attachRequired: false
   podInfoOnMount: true

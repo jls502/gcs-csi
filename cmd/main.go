@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ofek/csi-gcs/pkg/driver"
+	"github.com/shein/gcs-csi/pkg/driver"
 	"k8s.io/klog"
 )
 
@@ -20,8 +20,8 @@ var (
 )
 
 func main() {
-	_ = flag.Set("alsologtostderr", "true")
 	klog.InitFlags(nil)
+	_ = flag.Set("alsologtostderr", "true")
 	setEnvVarFlags()
 	flag.Parse()
 

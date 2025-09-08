@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1beta1 "github.com/ofek/csi-gcs/pkg/apis/published-volume/v1beta1"
-	scheme "github.com/ofek/csi-gcs/pkg/client/clientset/clientset/scheme"
+	v1beta1 "github.com/shein/gcs-csi/pkg/apis/published-volume/v1beta1"
+	scheme "github.com/shein/gcs-csi/pkg/client/clientset/clientset/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/ofek/csi-gcs/pkg/apis/published-volume/v1beta1"
+	v1beta1 "github.com/shein/gcs-csi/pkg/apis/published-volume/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,9 +35,9 @@ type FakePublishedVolumes struct {
 	Fake *FakeGcsV1beta1
 }
 
-var publishedvolumesResource = schema.GroupVersionResource{Group: "gcs.csi.ofek.dev", Version: "v1beta1", Resource: "publishedvolumes"}
+var publishedvolumesResource = schema.GroupVersionResource{Group: "gcs.csi.shein.dev", Version: "v1beta1", Resource: "publishedvolumes"}
 
-var publishedvolumesKind = schema.GroupVersionKind{Group: "gcs.csi.ofek.dev", Version: "v1beta1", Kind: "PublishedVolume"}
+var publishedvolumesKind = schema.GroupVersionKind{Group: "gcs.csi.shein.dev", Version: "v1beta1", Kind: "PublishedVolume"}
 
 // Get takes name of the publishedVolume, and returns the corresponding publishedVolume object, and an error if there is any.
 func (c *FakePublishedVolumes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.PublishedVolume, err error) {

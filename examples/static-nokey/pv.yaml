@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: csi-gcs-pv-nokey
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: csi-gcs-test-sc-nokey
+  mountOptions:
+  - -o=allow_other
+  - --gid=0
+  - --dir-mode=0775
+  - --file-mode=0775
+  - --implicit-dirs
+  csi:
+    driver: gcs.csi.shein.dev
+    volumeHandle: csi-gcs-pv-nokey
+    volumeAttributes:
+      bucket: gcscsi-test

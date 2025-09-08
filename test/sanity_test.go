@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-csi/csi-test/v3/pkg/sanity"
-	"github.com/ofek/csi-gcs/pkg/driver"
+	"github.com/shein/gcs-csi/pkg/driver"
 	"k8s.io/klog"
 )
 
