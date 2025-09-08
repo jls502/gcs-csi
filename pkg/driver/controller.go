@@ -101,11 +101,13 @@ func (d *GCSDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeReque
 	} else {
 		klog.V(2).Infof("Bucket '%s' does not exist, creating", options[flags.FLAG_BUCKET])
 
-		projectId, projectIdExists := options[flags.FLAG_PROJECT_ID]
-		if !projectIdExists {
-			return nil, status.Errorf(codes.InvalidArgument, "Project Id not provided, bucket can't be created: %s", options[flags.FLAG_BUCKET])
+		storageClassAndLocation := &storage.BucketAttrs{
+			StorageClass: req.Parameters["storageClass"],
+			Location:     req.Parameters["location"],
+			LocationType: req.Parameters["locationType"],
 		}
-		if err := bucket.Create(ctx, projectId, &storage.BucketAttrs{Location: options[flags.FLAG_LOCATION]}); err != nil {
+
+		if err := bucket.Create(ctx, req.Parameters["projectId"], storageClassAndLocation); err != nil {
 			return nil, status.Errorf(codes.Internal, "Failed to create bucket: %v", err)
 		}
 	}

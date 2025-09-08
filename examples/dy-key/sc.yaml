@@ -19,5 +19,7 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: default
   csi.storage.k8s.io/controller-expand-secret-name: csi-gcs-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: default
-  gcs.csi.shein.dev/project-id: abc-poc-test 
-  gcs.csi.shein.dev/location: eu
+  projectId: abc-poc-test 
+  location: europe-west3 #defaults to "US"
+  locationType: region #"multi-region", "region", "dual-region"
+  storageClass: STANDARD #"STANDARD", "NEARLINE","COLDLINE" and "ARCHIVE". Defaults to "STANDARD"
