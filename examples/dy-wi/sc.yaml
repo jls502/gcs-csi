@@ -13,5 +13,7 @@ mountOptions:
   - --file-mode=0775
   - --implicit-dirs
 parameters:
-  gcs.csi.shein.dev/project-id: abc-poc-test 
-  gcs.csi.shein.dev/location: eu
+  projectId: abc-poc-test
+  location: europe-west3 #defaults to "US"
+  locationType: region #"multi-region", "region", "dual-region"
+  storageClass: STANDARD
